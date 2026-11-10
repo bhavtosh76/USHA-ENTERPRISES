@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #0b1f42;
+  --solar: #197d4b;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-sand text-slate-800 antialiased;
+}
+
+::selection {
+  background: #b3e7c5;
+  color: #07142c;
+}
+
+@layer base {
+  h1, h2, h3, h4 {
+    @apply tracking-tight text-navy-900;
+  }
+
+  /* Grid children default to min-width:auto, which lets wide tables, selects
+     and button groups push the page wider than a phone screen. */
+  .grid > * {
+    min-width: 0;
+  }
+}
+
+@layer components {
+  .card {
+    @apply min-w-0 rounded-xl border border-slate-200 bg-white shadow-card;
+  }
+  .card-pad {
+    @apply min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-card;
+  }
+  .label {
+    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+  .input {
+    @apply w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-solar-500 focus:ring-2 focus:ring-solar-500/20 disabled:cursor-not-allowed disabled:bg-slate-100;
+  }
+  .input-sm {
+    @apply rounded-md px-2.5 py-1.5 text-xs;
+  }
+  .select {
+    @apply input appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[right_0.7rem_center] bg-no-repeat pr-8;
+  }
+  .table-base {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .table-base thead th {
+    @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+  .table-base tbody td {
+    @apply border-b border-slate-100 px-3 py-3 align-middle text-slate-700;
+  }
+  .table-base tbody tr:hover {
+    @apply bg-slate-50/70;
+  }
+  .link {
+    @apply text-solar-700 underline-offset-2 hover:underline;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+  }
+  .kpi-value {
+    @apply text-2xl font-bold tracking-tight text-navy-900;
+  }
+}
+
+/* thin scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .card, .card-pad {
+    box-shadow: none;
+    border-color: #ddd;
+  }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { opacity: 0; }
+}
+.pulse-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: #22c55e;
+  animation: pulse-ring 2.4s ease-out infinite;
+}

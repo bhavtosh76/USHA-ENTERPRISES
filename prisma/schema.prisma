@@ -1,0 +1,484 @@
+// USHA ENTERPRISES - Database schema
+// SQLite for zero-config local development. To move to PostgreSQL:
+//   1. change provider to "postgresql"
+//   2. set DATABASE_URL="postgresql://user:pass@host:5432/usha"
+//   3. npx prisma migrate deploy
+// All monetary values are stored as Float (INR). For accounting-grade
+// precision switch to Decimal in PostgreSQL (Prisma supports Decimal there).
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local dev, Linux targets for Firebase / Cloud Run.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// IDENTITY / RBAC
+// ------------------------------------------------------------------
+
+model Role {
+  id          String   @id @default(cuid())
+  key         String   @unique // SUPER_ADMIN, ADMIN, MANAGER, ...
+  name        String
+  description String?
+  permissions String   @default("[]") // JSON string array of permission keys
+  isSystem    Boolean  @default(false)
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String
+  name               String
+  roleId             String
+  role               Role      @relation(fields: [roleId], references: [id])
+  staff              Staff?
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdCustomers   Customer[]
+  uploadedDocuments  CustomerDocument[] @relation("DocumentUploader")
+  verifiedDocuments  CustomerDocument[] @relation("DocumentVerifier")
+  statusChanges      ApplicationHistory[]
+  salaryApprovals    Salary[]            @relation("SalaryApprover")
+  salaryPayments     SalaryPayment[]     @relation("SalaryPayer")
+  attendanceMarked   Attendance[]        @relation("AttendanceMarker")
+  leaveApprovals     LeaveRequest[]      @relation("LeaveApprover")
+  subsidyCalcs       SubsidyCalculation[]
+  resetRequests      PasswordResetRequest[]
+  handledResets      PasswordResetRequest[] @relation("ResetRequestHandler")
+
+  @@index([roleId])
+}
+
+// ------------------------------------------------------------------
+// STAFF / HR / PAYROLL
+// ------------------------------------------------------------------
+
+model Staff {
+  id              String    @id @default(cuid())
+  employeeId      String    @unique
+  userId          String?   @unique
+  user            User?     @relation(fields: [userId], references: [id])
+  fullName        String
+  mobile          String
+  altMobile       String?
+  email           String?
+  address         String?
+  photoPath       String?
+  joiningDate     DateTime
+  designation     String // R Manager, AREA Manager, Team Leader, Field Executive, ...
+  department      String?
+  monthlySalary   Float     @default(0)
+  bankName        String?
+  bankAccount     String?
+  bankIfsc        String?
+  targetMonthly   Float     @default(0)
+  incentiveRate   Float     @default(0) // % of achieved target
+  commissionRate  Float     @default(0) // % of customer revenue
+  area            String?
+  reportsToId     String?
+  reportsTo       Staff?    @relation("StaffHierarchy", fields: [reportsToId], references: [id])
+  subordinates    Staff[]   @relation("StaffHierarchy")
+  status          String    @default("ACTIVE") // ACTIVE, INACTIVE, TERMINATED
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  attendance      Attendance[]
+  leaves          LeaveRequest[]
+  salaries        Salary[]
+  customers       Customer[]
+  installations   Installation[]
+  transactions    Transaction[]
+
+  @@index([status])
+  @@index([designation])
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  staffId       String
+  staff         Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date          DateTime // date at 00:00 local
+  status        String   // PRESENT, ABSENT, HALF_DAY, PAID_LEAVE, UNPAID_LEAVE, HOLIDAY
+  checkIn       String?
+  checkOut      String?
+  overtimeHours Float    @default(0)
+  note          String?
+  markedById    String?
+  markedBy      User?    @relation("AttendanceMarker", fields: [markedById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([staffId, date])
+  @@index([date])
+}
+
+model LeaveRequest {
+  id          String   @id @default(cuid())
+  staffId     String
+  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  fromDate    DateTime
+  toDate      DateTime
+  type        String // PAID, UNPAID, SICK, CASUAL
+  reason      String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedById String?
+  approvedBy  User?    @relation("LeaveApprover", fields: [approvedById], references: [id])
+  decidedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([staffId, status])
+}
+
+model Salary {
+  id             String   @id @default(cuid())
+  staffId        String
+  staff          Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  month          String // "2026-11"
+  fixedSalary    Float    @default(0)
+  workingDays    Int      @default(26)
+  presentDays    Float    @default(0)
+  absentDays     Float    @default(0)
+  paidLeave      Float    @default(0)
+  unpaidLeave    Float    @default(0)
+  overtimeHours  Float    @default(0)
+  overtimeAmount Float    @default(0)
+  incentive      Float    @default(0)
+  commission     Float    @default(0)
+  advance        Float    @default(0)
+  otherDeduction Float    @default(0)
+  grossSalary    Float    @default(0)
+  netSalary      Float    @default(0)
+  status         String   @default("PENDING") // PENDING, APPROVED, PAID
+  slipNo         String   @unique
+  approvedById   String?
+  approvedBy     User?    @relation("SalaryApprover", fields: [approvedById], references: [id])
+  approvedAt     DateTime?
+  paidAt         DateTime?
+  paymentMode    String?
+  remarks        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  payments       SalaryPayment[]
+
+  @@unique([staffId, month])
+  @@index([month, status])
+}
+
+model SalaryPayment {
+  id        String   @id @default(cuid())
+  salaryId  String
+  salary    Salary   @relation(fields: [salaryId], references: [id], onDelete: Cascade)
+  amount    Float
+  mode      String   @default("BANK") // BANK, CASH, UPI, CHEQUE
+  reference String?
+  paidById  String?
+  paidBy    User?    @relation("SalaryPayer", fields: [paidById], references: [id])
+  paidAt    DateTime @default(now())
+}
+
+// ------------------------------------------------------------------
+// CRM / CUSTOMERS
+// ------------------------------------------------------------------
+
+model Customer {
+  id              String   @id @default(cuid())
+  customerCode    String   @unique // UE-C-2026-0001
+  fullName        String
+  fatherName      String?
+  dob             DateTime?
+  mobile          String
+  altMobile       String?
+  state           String   @default("Uttar Pradesh")
+  district        String   @default("Pilibhit")
+  tehsil          String?
+  village         String?
+  address         String?
+  pinCode         String?
+  consumerNumber  String?
+  discom          String? // MVVNL, PVVNL, DVVNL, PuVVNL...
+  connectionType  String? // DOMESTIC, COMMERCIAL, AGRICULTURAL
+  sanctionedLoad  String?
+  capacityKw      Float    @default(0)
+  systemCost      Float    @default(0)
+  applicationDate DateTime @default(now())
+  assignedStaffId String?
+  assignedStaff   Staff?   @relation(fields: [assignedStaffId], references: [id])
+  status          String   @default("NEW") // see lib/constants.ts
+  remarks         String?
+  isArchived      Boolean  @default(false)
+  createdById     String?
+  createdBy       User?    @relation(fields: [createdById], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  documents       CustomerDocument[]
+  history         ApplicationHistory[]
+  installation    Installation?
+  transactions    Transaction[]
+  subsidyCalcs    SubsidyCalculation[]
+
+  @@index([status])
+  @@index([assignedStaffId])
+  @@index([district, tehsil, village])
+  @@index([mobile])
+}
+
+model CustomerDocument {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type           String // AADHAAR, PAN, ELECTRICITY_BILL, BANK_PASSBOOK, PHOTO, OTHER
+  fileName       String
+  storedPath     String // relative to UPLOAD_DIR, never exposed directly
+  mimeType       String
+  size           Int
+  status         String   @default("PENDING") // PENDING, VERIFIED, REJECTED
+  notes          String?
+  // lightweight manual verification fields (name / DOB / address match check)
+  extractedName  String?
+  extractedDob   String?
+  extractedAddress String?
+  verifiedById   String?
+  verifiedBy     User?    @relation("DocumentVerifier", fields: [verifiedById], references: [id])
+  verifiedAt     DateTime?
+  uploadedById   String?
+  uploadedBy     User?    @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([customerId, type])
+}
+
+model ApplicationHistory {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status     String
+  note       String?
+  changedById String?
+  changedBy  User?    @relation(fields: [changedById], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+// ------------------------------------------------------------------
+// SUBSIDY
+// ------------------------------------------------------------------
+
+model SubsidyScheme {
+  id              String   @id @default(cuid())
+  name            String
+  schemeCode      String   @unique
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  state           String   @default("ALL") // ALL or state name
+  discom          String? // null = any
+  capacityMinKw   Float
+  capacityMaxKw   Float
+  centralRatePerKw Float  @default(0)
+  stateRatePerKw  Float    @default(0)
+  maxSubsidy      Float    @default(0)
+  eligibility     String?
+  sourceUrl       String?
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  calculations    SubsidyCalculation[]
+
+  @@index([isActive, state])
+}
+
+model SubsidyCalculation {
+  id                  String   @id @default(cuid())
+  customerId          String?
+  customer            Customer? @relation(fields: [customerId], references: [id])
+  schemeId            String?
+  scheme              SubsidyScheme? @relation(fields: [schemeId], references: [id])
+  capacityKw          Float
+  state               String
+  centralSubsidy      Float
+  stateSubsidy        Float
+  totalSubsidy        Float
+  systemCost          Float
+  customerContribution Float
+  schemeSnapshot      String   @default("[]") // JSON of applied slabs
+  createdById         String?
+  createdBy           User?    @relation(fields: [createdById], references: [id])
+  createdAt           DateTime @default(now())
+
+  @@index([customerId])
+  @@index([schemeId])
+}
+
+// ------------------------------------------------------------------
+// INSTALLATION
+// ------------------------------------------------------------------
+
+model Installation {
+  id                String   @id @default(cuid())
+  customerId        String   @unique
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  capacityKw        Float    @default(0)
+  installationDate  DateTime?
+  teamLeadId        String?
+  teamLead          Staff?   @relation(fields: [teamLeadId], references: [id])
+  teamMembers       String?
+  inverterBrand     String?
+  inverterModel     String?
+  inverterSerial    String?
+  panelBrand        String?
+  panelModel        String?
+  panelCount        Int?
+  panelSerials      String?
+  photos            String   @default("[]") // JSON array of stored paths
+  inspectionStatus  String   @default("PENDING") // PENDING, SCHEDULED, PASSED, FAILED
+  inspectionDate    DateTime?
+  netMeterStatus    String   @default("PENDING") // PENDING, APPLIED, INSTALLED, APPROVED
+  netMeterDate      DateTime?
+  completionStatus  String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  remarks           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ------------------------------------------------------------------
+// FINANCE
+// ------------------------------------------------------------------
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String // INCOME, EXPENSE
+  category    String // CUSTOMER_PAYMENT, SUBSIDY, SALARY, OFFICE, INSTALLATION, MARKETING, OTHER...
+  amount      Float
+  date        DateTime @default(now())
+  description String?
+  reference   String?
+  paymentMode String   @default("CASH")
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  staffId     String?
+  staff       Staff?   @relation(fields: [staffId], references: [id])
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type, date])
+  @@index([category])
+}
+
+// ------------------------------------------------------------------
+// SYSTEM
+// ------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String? // target user (null = broadcast to role)
+  roleKey   String?
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, DANGER
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([roleKey, isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String?
+  action    String // CREATE, UPDATE, DELETE, LOGIN, VIEW, DOWNLOAD, VERIFY...
+  entity    String
+  entityId  String?
+  details   String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  success   Boolean
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+}
+
+model PasswordResetRequest {
+  id          String    @id @default(cuid())
+  email       String
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status      String    @default("PENDING") // PENDING, RESOLVED, DISMISSED
+  requestIp   String?
+  note        String?
+  createdAt   DateTime  @default(now())
+  handledAt   DateTime?
+  handledById String?
+  handledBy   User?     @relation("ResetRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}
+
+model Enquiry {
+  id         String   @id @default(cuid())
+  name       String
+  mobile     String
+  village    String?
+  district   String?  @default("Pilibhit")
+  capacityKw Float?
+  message    String?
+  source     String   @default("WEBSITE")
+  status     String   @default("NEW") // NEW, CONTACTED, CONVERTED, CLOSED
+  handledById String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+// Private uploads stored in the database when STORAGE_DRIVER=db.
+// Used on serverless hosting (Firebase / Cloud Run) where the local
+// filesystem is ephemeral. The API always streams files through auth.
+model StoredFile {
+  id        String   @id @default(cuid())
+  data      Bytes
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,14 @@
+{
+  "hosting": {
+    "source": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "frameworksBackend": {
+      "region": "asia-south1",
+      "memory": "512MiB",
+      "cpu": 1,
+      "maxInstances": 3,
+      "minInstances": 0,
+      "timeoutSeconds": 60
+    }
+  }
+}
