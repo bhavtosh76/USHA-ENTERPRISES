@@ -26,7 +26,8 @@ type Result = {
 
 export function SubsidyCalculator({ compact = false }: { compact?: boolean }) {
   const [capacity, setCapacity] = useState(3);
-  const [costPerKw, setCostPerKw] = useState(55000);
+  // ₹70,000/kW → 3 kW residential example = ₹2,10,000 system cost.
+  const [costPerKw, setCostPerKw] = useState(70000);
   const [stateName, setStateName] = useState("Uttar Pradesh");
   const [discom, setDiscom] = useState("MVVNL");
   const [result, setResult] = useState<Result | null>(null);
@@ -166,22 +167,22 @@ export function SubsidyCalculator({ compact = false }: { compact?: boolean }) {
             </p>
             <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
               <div className="rounded-lg bg-white/5 p-3 ring-1 ring-inset ring-white/10">
-                <p className="text-slate-400">Central Govt.</p>
+                <p className="text-slate-400">Central subsidy (up to)</p>
                 <p className="mt-0.5 text-sm font-bold">{formatINR(result?.centralSubsidy ?? 0)}</p>
               </div>
               <div className="rounded-lg bg-white/5 p-3 ring-1 ring-inset ring-white/10">
-                <p className="text-slate-400">State Govt. (UP)</p>
+                <p className="text-slate-400">UP state subsidy</p>
                 <p className="mt-0.5 text-sm font-bold">{formatINR(result?.stateSubsidy ?? 0)}</p>
               </div>
             </div>
           </div>
           <div className="space-y-2 border-t border-white/10 bg-white/5 px-5 py-4 text-xs">
             <div className="flex justify-between text-slate-300">
-              <span>Total system cost ({capacity} kW)</span>
+              <span>Estimated system cost ({capacity} kW)</span>
               <span className="font-semibold text-white">{formatINR(result?.systemCost ?? 0)}</span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>Your estimated contribution</span>
+              <span>Estimated contribution</span>
               <span className="font-semibold text-white">{formatINR(result?.customerContribution ?? 0)}</span>
             </div>
           </div>

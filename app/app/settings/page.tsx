@@ -56,7 +56,7 @@ export default async function SettingsPage({
     subsidy_disclaimer: map.subsidy_disclaimer || "",
     default_working_days: map.default_working_days || "26",
     overtime_rate: map.overtime_rate || "0",
-    default_system_cost_per_kw: map.default_system_cost_per_kw || "55000",
+    default_system_cost_per_kw: map.default_system_cost_per_kw || "70000",
     notify_email: map.notify_email || "",
     notify_whatsapp: map.notify_whatsapp || "",
   };

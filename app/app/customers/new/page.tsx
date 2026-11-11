@@ -29,7 +29,7 @@ export default async function NewCustomerPage() {
       />
       <CustomerForm
         staffOptions={staff}
-        defaultCostPerKw={Number(setting?.value || 55000)}
+        defaultCostPerKw={Number(setting?.value || 70000)}
       />
     </div>
   );

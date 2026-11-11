@@ -42,7 +42,7 @@ export function CompanyForm({ initial }: { initial: CompanySettings }) {
           ...form,
           default_working_days: Number(form.default_working_days) || 26,
           overtime_rate: Number(form.overtime_rate) || 0,
-          default_system_cost_per_kw: Number(form.default_system_cost_per_kw) || 55000,
+          default_system_cost_per_kw: Number(form.default_system_cost_per_kw) || 70000,
         }),
       });
       const data = await res.json();

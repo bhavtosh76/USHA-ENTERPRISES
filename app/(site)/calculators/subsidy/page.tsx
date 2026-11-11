@@ -113,7 +113,7 @@ export default async function SubsidyPage() {
                   "Yeh estimate hai. Actual subsidy customer ki eligibility, DISCOM feasibility approval aur Government sanction par depend karti hai."}
               </p>
               <p className="mt-2 text-[11px] leading-relaxed text-slate-600">
-                Default system cost: {formatINR(Number(map.default_system_cost_per_kw || 55000))}/kW.
+                Default system cost: {formatINR(Number(map.default_system_cost_per_kw || 70000))}/kW.
                 Yeh sirf calculation ke liye assumption hai, quotation nahi.
               </p>
             </div>

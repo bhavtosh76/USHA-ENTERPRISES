@@ -75,7 +75,7 @@ async function main() {
       "Yeh subsidy estimate hai. Actual subsidy customer ki eligibility, DISCOM feasibility approval aur Government sanction par depend karti hai. Rates admin settings se update hote hain.",
     default_working_days: "26",
     overtime_rate: "0",
-    default_system_cost_per_kw: "55000",
+    default_system_cost_per_kw: "70000",
     notify_email: "",
     notify_whatsapp: "",
     session_minutes: "480",

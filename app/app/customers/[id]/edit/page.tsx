@@ -39,7 +39,7 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
         mode="edit"
         customerId={customer.id}
         staffOptions={staff}
-        defaultCostPerKw={Number(setting?.value || 55000)}
+        defaultCostPerKw={Number(setting?.value || 70000)}
         initial={{
           fullName: customer.fullName,
           fatherName: customer.fatherName || "",

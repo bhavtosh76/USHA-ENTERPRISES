@@ -30,7 +30,7 @@ export const POST = withApi(async (request) => {
   const costPerKw =
     input.systemCostPerKw && input.systemCostPerKw > 0
       ? input.systemCostPerKw
-      : Number(map.default_system_cost_per_kw || 55000);
+      : Number(map.default_system_cost_per_kw || 70000);
 
   let customerSystemCost: number | null = null;
   if (input.customerId) {

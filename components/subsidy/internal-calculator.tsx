@@ -43,7 +43,7 @@ export function InternalSubsidyCalculator({
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
   const [capacity, setCapacity] = useState(String(defaultCapacity || preselected?.capacityKw || 3));
   const [costPerKw, setCostPerKw] = useState(
-    String(preselected && preselected.systemCost > 0 && preselected.capacityKw > 0 ? Math.round(preselected.systemCost / preselected.capacityKw) : 55000),
+    String(preselected && preselected.systemCost > 0 && preselected.capacityKw > 0 ? Math.round(preselected.systemCost / preselected.capacityKw) : 70000),
   );
   const [stateName, setStateName] = useState("Uttar Pradesh");
   const [discom, setDiscom] = useState("MVVNL");
