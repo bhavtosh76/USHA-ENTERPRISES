@@ -227,18 +227,18 @@ export function OrgTreeView({ tree, designations }: Props) {
           Direct reports only
         </label>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-          <button type="button" onClick={expandAll} className="rounded px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white">Expand all</button>
-          <button type="button" onClick={collapseAll} className="rounded px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white">Collapse all</button>
+          <button type="button" onClick={expandAll} className="rounded px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-white sm:py-1">Expand all</button>
+          <button type="button" onClick={collapseAll} className="rounded px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-white sm:py-1">Collapse all</button>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-          <button type="button" onClick={() => setZoom((z) => Math.max(0.35, +(z - 0.1).toFixed(2)))} className="rounded p-1 text-slate-600 hover:bg-white" aria-label="Zoom out">
-            <Minus className="h-3.5 w-3.5" />
+          <button type="button" onClick={() => setZoom((z) => Math.max(0.35, +(z - 0.1).toFixed(2)))} className="rounded p-1.5 text-slate-600 hover:bg-white sm:p-1" aria-label="Zoom out">
+            <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
           </button>
           <span className="w-10 text-center text-[11px] font-semibold text-slate-600">{Math.round(zoom * 100)}%</span>
-          <button type="button" onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(2)))} className="rounded p-1 text-slate-600 hover:bg-white" aria-label="Zoom in">
-            <Plus className="h-3.5 w-3.5" />
+          <button type="button" onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(2)))} className="rounded p-1.5 text-slate-600 hover:bg-white sm:p-1" aria-label="Zoom in">
+            <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
           </button>
-          <button type="button" onClick={fitToScreen} className="rounded px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white">Fit</button>
+          <button type="button" onClick={fitToScreen} className="rounded px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-white sm:py-1">Fit</button>
         </div>
         <button type="button" onClick={() => window.print()} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
           <Printer className="h-3.5 w-3.5" /> Print / Save PDF
