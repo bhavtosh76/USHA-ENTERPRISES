@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -88,6 +88,14 @@ export function OrgTreeView({ tree, designations }: Props) {
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState<OrgNode | null>(null);
   const [transfer, setTransfer] = useState<OrgNode | null>(null);
+
+  // On narrow screens the chart is wider than the canvas. Start from the
+  // centre so the top authority is visible instead of the empty left edge.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.scrollLeft = Math.max(0, (canvas.scrollWidth - canvas.clientWidth) / 2);
+  }, [tree.total, fullscreen]);
 
   const filtering = Boolean(query || designationFilter || statusFilter);
   const visibleRoots = useMemo(
