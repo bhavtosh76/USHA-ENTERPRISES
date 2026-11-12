@@ -48,9 +48,10 @@ function statusTone(status: string) {
   return "neutral" as const;
 }
 
-function matches(node: OrgNode, query: string, designation: string, status: string) {
+function matches(node: OrgNode, query: string, designation: string, status: string, area: string) {
   if (designation && node.designation !== designation) return false;
   if (status && node.status !== status) return false;
+  if (area && node.area !== area) return false;
   if (!query) return true;
   const haystack = [node.fullName, node.employeeId, node.designation, node.department, node.area, node.email]
     .filter(Boolean)
@@ -60,11 +61,11 @@ function matches(node: OrgNode, query: string, designation: string, status: stri
 }
 
 /** Keep a node when it or any descendant matches the active filters. */
-function filterTree(nodes: OrgNode[], query: string, designation: string, status: string): OrgNode[] {
+function filterTree(nodes: OrgNode[], query: string, designation: string, status: string, area: string): OrgNode[] {
   const out: OrgNode[] = [];
   for (const node of nodes) {
-    const children = filterTree(node.children, query, designation, status);
-    if (matches(node, query, designation, status) || children.length) {
+    const children = filterTree(node.children, query, designation, status, area);
+    if (matches(node, query, designation, status, area) || children.length) {
       out.push({ ...node, children });
     }
   }
@@ -86,6 +87,9 @@ export function OrgTreeView({ tree, designations }: Props) {
   const [query, setQuery] = useState("");
   const [designationFilter, setDesignationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [areaFilter, setAreaFilter] = useState("");
+  const [managerFilter, setManagerFilter] = useState("");
+  const [directOnly, setDirectOnly] = useState(false);
   const [selected, setSelected] = useState<OrgNode | null>(null);
   const [transfer, setTransfer] = useState<OrgNode | null>(null);
 
@@ -97,15 +101,48 @@ export function OrgTreeView({ tree, designations }: Props) {
     canvas.scrollLeft = Math.max(0, (canvas.scrollWidth - canvas.clientWidth) / 2);
   }, [tree.total, fullscreen]);
 
-  const filtering = Boolean(query || designationFilter || statusFilter);
+  const filtering = Boolean(query || designationFilter || statusFilter || areaFilter || managerFilter || directOnly);
+  const baseRoots = useMemo(() => {
+    if (directOnly) {
+      const self = tree.access.selfId
+        ? tree.flat.find((n) => n.id === tree.access.selfId)
+        : null;
+      return (self?.children ?? []).map((child) => ({ ...child, children: [] }));
+    }
+    if (!managerFilter) return tree.roots;
+    const search = (nodes: OrgNode[]): OrgNode | null => {
+      for (const node of nodes) {
+        if (node.id === managerFilter) return node;
+        const found = search(node.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    const root = search(tree.roots);
+    return root ? [root] : [];
+  }, [tree.roots, tree.flat, tree.access.selfId, managerFilter, directOnly]);
   const visibleRoots = useMemo(
-    () => (filtering ? filterTree(tree.roots, query, designationFilter, statusFilter) : tree.roots),
-    [tree.roots, filtering, query, designationFilter, statusFilter],
+    () =>
+      filtering
+        ? filterTree(baseRoots, query, designationFilter, statusFilter, areaFilter)
+        : baseRoots,
+    [baseRoots, filtering, query, designationFilter, statusFilter, areaFilter],
   );
   const matchCount = filtering ? countMatches(visibleRoots) : tree.total;
 
   const designationNames = useMemo(
     () => Array.from(new Set(tree.flat.map((n) => n.designation))).sort(),
+    [tree.flat],
+  );
+  const areaNames = useMemo(
+    () => Array.from(new Set(tree.flat.map((n) => n.area).filter((a): a is string => Boolean(a)))).sort(),
+    [tree.flat],
+  );
+  const managerOptions = useMemo(
+    () =>
+      tree.flat
+        .filter((n) => n.directCount > 0)
+        .sort((a, b) => b.designationLevel - a.designationLevel || a.fullName.localeCompare(b.fullName)),
     [tree.flat],
   );
 
@@ -168,6 +205,27 @@ export function OrgTreeView({ tree, designations }: Props) {
           <option value="INACTIVE">Inactive</option>
           <option value="TERMINATED">Terminated</option>
         </Select>
+        <Select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="h-9 w-auto text-xs">
+          <option value="">All areas</option>
+          {areaNames.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </Select>
+        <Select value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)} className="h-9 w-auto text-xs" disabled={directOnly}>
+          <option value="">All managers</option>
+          {managerOptions.map((m) => (
+            <option key={m.id} value={m.id}>{m.fullName} ({m.directCount})</option>
+          ))}
+        </Select>
+        <label className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-[11px] font-semibold text-slate-600">
+          <input
+            type="checkbox"
+            checked={directOnly}
+            onChange={(e) => setDirectOnly(e.target.checked)}
+            className="h-3.5 w-3.5 accent-solar-600"
+          />
+          Direct reports only
+        </label>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
           <button type="button" onClick={expandAll} className="rounded px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white">Expand all</button>
           <button type="button" onClick={collapseAll} className="rounded px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white">Collapse all</button>
@@ -222,7 +280,7 @@ export function OrgTreeView({ tree, designations }: Props) {
           <div className="grid place-items-center py-20 text-center">
             <Users className="mb-2 h-8 w-8 text-slate-300" />
             <p className="text-sm font-semibold text-slate-600">No employees match your filters.</p>
-            <button type="button" onClick={() => { setQuery(""); setDesignationFilter(""); setStatusFilter(""); }} className="mt-2 text-xs font-semibold text-solar-700 hover:underline">
+            <button type="button" onClick={() => { setQuery(""); setDesignationFilter(""); setStatusFilter(""); setAreaFilter(""); setManagerFilter(""); setDirectOnly(false); }} className="mt-2 text-xs font-semibold text-solar-700 hover:underline">
               Clear filters
             </button>
           </div>
@@ -472,7 +530,12 @@ function TransferDialog({
   }, [node]);
 
   const managerOptions = nodes
-    .filter((n) => !blocked.has(n.id) && n.status === "ACTIVE")
+    .filter(
+      (n) =>
+        !blocked.has(n.id) &&
+        n.status === "ACTIVE" &&
+        n.designationLevel > (designations.find((d) => d.name === designation)?.level ?? node.designationLevel),
+    )
     .sort((a, b) => b.designationLevel - a.designationLevel || a.fullName.localeCompare(b.fullName));
 
   async function submit(e: React.FormEvent) {

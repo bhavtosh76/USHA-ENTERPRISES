@@ -3,7 +3,7 @@ import { requireApi, parseBody, withApi, json, auditRequest, HttpError } from "@
 import { staffSchema } from "@/lib/validation";
 import { nextEmployeeId } from "@/lib/ids";
 import { hashPassword } from "@/lib/auth";
-import { canonicalDesignation, getOrgAccess } from "@/lib/org";
+import { canonicalDesignation, getOrgAccess, levelOf } from "@/lib/org";
 
 const MANAGER_ALLOWED_ROLES = ["FIELD_STAFF", "TEAM_LEADER"];
 
@@ -33,15 +33,6 @@ export const POST = withApi(async (request) => {
   const exists = await prisma.user.findUnique({ where: { email: input.email } });
   if (exists) throw new HttpError(409, "This email is already registered. Use a different email.");
 
-  if (input.reportsToId) {
-    const manager = await prisma.staff.findUnique({
-      where: { id: input.reportsToId },
-      select: { id: true, status: true },
-    });
-    if (!manager) throw new HttpError(422, "Reporting manager not found.");
-    if (manager.status !== "ACTIVE") throw new HttpError(422, "Reporting manager is not active.");
-  }
-
   const canonical = canonicalDesignation(input.designation);
   const designation = await prisma.designation.findUnique({ where: { name: canonical } });
   if (designation && !access.all) {
@@ -56,6 +47,29 @@ export const POST = withApi(async (request) => {
       throw new HttpError(403, "Aap apne se senior designation wala employee create nahi kar sakte.");
     }
   }
+
+  if (input.reportsToId) {
+    const manager = await prisma.staff.findUnique({
+      where: { id: input.reportsToId },
+      select: {
+        id: true,
+        status: true,
+        designation: true,
+        designationRef: { select: { name: true, level: true } },
+      },
+    });
+    if (!manager) throw new HttpError(422, "Reporting manager not found.");
+    if (manager.status !== "ACTIVE") throw new HttpError(422, "Reporting manager is not active.");
+    const employeeLevel = designation?.level ?? levelOf(canonical);
+    const managerLevel = levelOf(
+      manager.designationRef?.name ?? manager.designation,
+      manager.designationRef?.level,
+    );
+    if (managerLevel <= employeeLevel) {
+      throw new HttpError(422, "Reporting manager ka designation employee se senior hona chahiye.");
+    }
+  }
+
   const department = input.department
     ? await prisma.department.findUnique({ where: { name: input.department } })
     : null;
@@ -78,6 +92,9 @@ export const POST = withApi(async (request) => {
           email: input.email,
           address: input.address,
           joiningDate: new Date(input.joiningDate),
+          dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : null,
+          gender: input.gender,
+          employmentType: input.employmentType,
           designation: canonical,
           designationId: designation?.id ?? null,
           department: input.department,

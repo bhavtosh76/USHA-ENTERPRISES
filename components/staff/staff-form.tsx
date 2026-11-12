@@ -16,6 +16,9 @@ export type StaffFormValues = {
   email: string;
   address: string;
   joiningDate: string;
+  dateOfBirth: string;
+  gender: string;
+  employmentType: string;
   designation: string;
   department: string;
   monthlySalary: string;
@@ -40,6 +43,9 @@ const empty: StaffFormValues = {
   email: "",
   address: "",
   joiningDate: new Date().toISOString().slice(0, 10),
+  dateOfBirth: "",
+  gender: "",
+  employmentType: "FULL_TIME",
   designation: "Field Executive",
   department: "Field Operations",
   monthlySalary: "15000",
@@ -145,6 +151,25 @@ export function StaffForm({
           </Field>
           <Field label="Joining date" required>
             <Input type="date" value={values.joiningDate} onChange={(e) => set("joiningDate", e.target.value)} />
+          </Field>
+          <Field label="Date of birth">
+            <Input type="date" value={values.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} />
+          </Field>
+          <Field label="Gender">
+            <Select value={values.gender} onChange={(e) => set("gender", e.target.value)}>
+              <option value="">—</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="OTHER">Other</option>
+            </Select>
+          </Field>
+          <Field label="Employment type">
+            <Select value={values.employmentType} onChange={(e) => set("employmentType", e.target.value)}>
+              <option value="FULL_TIME">Full time</option>
+              <option value="PART_TIME">Part time</option>
+              <option value="CONTRACT">Contract</option>
+              <option value="INTERN">Intern</option>
+            </Select>
           </Field>
           <Field label="Designation" required hint={selectedLevel ? `Level ${selectedLevel}` : undefined}>
             <Select value={values.designation} onChange={(e) => set("designation", e.target.value)}>

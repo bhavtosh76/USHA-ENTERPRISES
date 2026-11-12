@@ -6,7 +6,6 @@ import { prisma } from "@/lib/db";
 import { staffScope } from "@/lib/access";
 import { Badge, Card, EmptyState, LinkButton, PageHeader, Select, StatCard } from "@/components/ui";
 import { Pagination } from "@/components/pagination";
-import { DESIGNATIONS } from "@/lib/constants";
 import { formatDate, formatINR } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +44,7 @@ export default async function StaffPage({
 
   const where: Prisma.StaffWhereInput = { AND: [scope, ...filters] };
 
-  const [total, staff, summary] = await Promise.all([
+  const [total, staff, summary, salaryAgg, designations] = await Promise.all([
     prisma.staff.count({ where }),
     prisma.staff.findMany({
       where,
@@ -58,12 +57,20 @@ export default async function StaffPage({
         _count: { select: { customers: true } },
       },
     }),
-    prisma.staff.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.staff.groupBy({ by: ["status"], where: scope, _count: { _all: true } }),
+    prisma.staff.aggregate({
+      where: { AND: [scope, { status: "ACTIVE" }] },
+      _sum: { monthlySalary: true },
+    }),
+    prisma.designation.findMany({
+      where: { isActive: true },
+      orderBy: [{ level: "desc" }, { name: "asc" }],
+      select: { name: true },
+    }),
   ]);
 
   const active = summary.find((s) => s.status === "ACTIVE")?._count._all ?? 0;
   const inactive = summary.find((s) => s.status !== "ACTIVE")?._count._all ?? 0;
-  const salaryAgg = await prisma.staff.aggregate({ where: { status: "ACTIVE" }, _sum: { monthlySalary: true } });
 
   const makeHref = (p: number) => {
     const params = new URLSearchParams();
@@ -86,7 +93,7 @@ export default async function StaffPage({
         <StatCard label="Total staff" value={total} icon={<Users className="h-5 w-5" />} tone="brand" />
         <StatCard label="Active staff" value={active} tone="success" hint={`${inactive} inactive`} />
         <StatCard label="Monthly salary" value={formatINR(salaryAgg._sum.monthlySalary ?? 0)} hint="Active staff fixed" tone="info" />
-        <StatCard label="Designations" value={DESIGNATIONS.length} hint="Defined roles" tone="purple" />
+        <StatCard label="Designations" value={designations.length} hint="Configured roles" tone="purple" />
       </div>
 
       <Card className="mb-4">
@@ -103,7 +110,7 @@ export default async function StaffPage({
           </Select>
           <Select name="designation" defaultValue={designation}>
             <option value="">All designations</option>
-            {DESIGNATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+            {designations.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
           </Select>
           <div className="flex gap-2">
             <button type="submit" className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-navy-900 px-4 text-xs font-semibold text-white hover:bg-navy-800">

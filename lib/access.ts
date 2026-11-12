@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import { can, type AuthUser } from "./auth";
+import { collectDescendantIds } from "./org";
 
 /**
  * Row-level visibility.
@@ -45,14 +46,15 @@ export async function canAccessCustomer(user: AuthUser, customerId: string): Pro
   return Boolean(found);
 }
 
-/** Staff directory visibility. */
+/** Staff directory visibility. Mirrors the org-tree scope exactly. */
 export async function staffScope(user: AuthUser): Promise<Prisma.StaffWhereInput> {
-  if (can(user, "customer.view_all") || can(user, "staff.manage") || user.roleKey === "ACCOUNTANT") {
-    return {};
-  }
+  // Company-wide roles (Super Admin, plain Admin) and payroll need everyone.
+  if (user.roleKey === "SUPER_ADMIN" || can(user, "*")) return {};
+  if (user.roleKey === "ADMIN" && !user.staffId) return {};
+  if (user.roleKey === "ACCOUNTANT") return {};
   if (!user.staffId) return { id: "__none__" };
-  if (["TEAM_LEADER", "AREA_MANAGER", "MANAGER"].includes(user.roleKey)) {
-    return { OR: [{ reportsToId: user.staffId }, { id: user.staffId }] };
-  }
-  return { id: user.staffId };
+
+  const rows = await prisma.staff.findMany({ select: { id: true, reportsToId: true } });
+  const ids = Array.from(collectDescendantIds(rows, user.staffId));
+  return { id: { in: ids } };
 }

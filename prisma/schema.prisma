@@ -79,6 +79,9 @@ model Staff {
   address         String?
   photoPath       String?
   joiningDate     DateTime
+  dateOfBirth     DateTime?
+  gender          String? // MALE, FEMALE, OTHER
+  employmentType  String    @default("FULL_TIME") // FULL_TIME, PART_TIME, CONTRACT, INTERN
   designation     String // R Manager, AREA Manager, Team Leader, Field Executive, ...
   designationId   String?
   designationRef  Designation? @relation(fields: [designationId], references: [id])

@@ -150,6 +150,9 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
                 <InfoRow label="Designation" value={staff.designation} />
                 <InfoRow label="Department" value={staff.department || "—"} />
                 <InfoRow label="Joining date" value={formatDate(staff.joiningDate)} />
+                <InfoRow label="Date of birth" value={staff.dateOfBirth ? formatDate(staff.dateOfBirth) : "—"} />
+                <InfoRow label="Gender" value={staff.gender ? staff.gender.charAt(0) + staff.gender.slice(1).toLowerCase() : "—"} />
+                <InfoRow label="Employment type" value={staff.employmentType.replace("_", " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())} />
                 <InfoRow label="Work area" value={staff.area || "—"} />
                 <InfoRow label="Reports to" value={staff.reportsTo ? <Link className="link" href={`/app/staff/${staff.reportsTo.id}`}>{staff.reportsTo.fullName}</Link> : "—"} />
               </div>

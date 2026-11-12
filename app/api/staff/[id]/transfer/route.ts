@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireApi, parseBody, withApi, json, auditRequest, HttpError } from "@/lib/api";
 import { staffTransferSchema } from "@/lib/validation";
-import { getOrgAccess, isInSubtree, canonicalDesignation } from "@/lib/org";
+import { getOrgAccess, isInSubtree, canonicalDesignation, levelOf } from "@/lib/org";
 import { can } from "@/lib/auth";
 
 type Ctx = { params: Promise<Record<string, string>> };
@@ -44,27 +44,14 @@ export const POST = withApi(async (request, context: Ctx) => {
   const toManagerId = input.toManagerId || null;
   const rows = await prisma.staff.findMany({ select: { id: true, reportsToId: true } });
 
-  if (toManagerId) {
-    if (toManagerId === id) throw new HttpError(422, "An employee cannot report to themselves.");
-    if (isInSubtree(rows, id, toManagerId)) {
-      throw new HttpError(422, "Circular reporting is not allowed: manager cannot be inside the employee's own team.");
-    }
-    const manager = await prisma.staff.findUnique({
-      where: { id: toManagerId },
-      select: { id: true, fullName: true, status: true },
-    });
-    if (!manager) throw new HttpError(422, "Selected reporting manager not found.");
-    if (manager.status !== "ACTIVE") throw new HttpError(422, "Selected reporting manager is not active.");
-    if (!access.all && !access.ids?.has(toManagerId)) {
-      throw new HttpError(403, "Selected manager is outside your authorised team.");
-    }
-  } else if (!access.all) {
+  if (!toManagerId && !access.all) {
     throw new HttpError(403, "Only company administrators can remove an employee's reporting manager.");
   }
 
   // Designation change is optional and also scope-checked.
   let nextDesignation = staff.designation;
   let nextDesignationId = staff.designationId;
+  let nextDesignationLevel = staff.designationRef?.level ?? levelOf(staff.designation);
   if (input.designation && input.designation !== canonicalDesignation(staff.designation)) {
     if (!can(actor, "staff.manage")) {
       throw new HttpError(403, "You are not allowed to change designations.");
@@ -86,6 +73,39 @@ export const POST = withApi(async (request, context: Ctx) => {
     }
     nextDesignation = designation.name;
     nextDesignationId = designation.id;
+    nextDesignationLevel = designation.level;
+  }
+
+  if (toManagerId) {
+    if (toManagerId === id) throw new HttpError(422, "An employee cannot report to themselves.");
+    if (isInSubtree(rows, id, toManagerId)) {
+      throw new HttpError(422, "Circular reporting is not allowed: manager cannot be inside the employee's own team.");
+    }
+    const manager = await prisma.staff.findUnique({
+      where: { id: toManagerId },
+      select: {
+        id: true,
+        fullName: true,
+        status: true,
+        designation: true,
+        designationRef: { select: { name: true, level: true } },
+      },
+    });
+    if (!manager) throw new HttpError(422, "Selected reporting manager not found.");
+    if (manager.status !== "ACTIVE") throw new HttpError(422, "Selected reporting manager is not active.");
+    if (!access.all && !access.ids?.has(toManagerId)) {
+      throw new HttpError(403, "Selected manager is outside your authorised team.");
+    }
+    const managerLevel = levelOf(
+      manager.designationRef?.name ?? manager.designation,
+      manager.designationRef?.level,
+    );
+    if (managerLevel <= nextDesignationLevel) {
+      throw new HttpError(
+        422,
+        "Reporting manager ka designation employee se senior hona chahiye.",
+      );
+    }
   }
 
   const changed = staff.reportsToId !== toManagerId || nextDesignation !== staff.designation;
