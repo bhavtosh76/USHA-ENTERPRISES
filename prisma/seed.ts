@@ -9,7 +9,8 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { ROLE_KEYS, ROLE_LABELS } from "../lib/constants";
+import { DEPARTMENTS, ROLE_KEYS, ROLE_LABELS } from "../lib/constants";
+import { DEFAULT_DESIGNATIONS, canonicalDesignation } from "../lib/org-config";
 import {
   ROLE_DESCRIPTIONS,
   ROLE_PERMISSIONS,
@@ -36,6 +37,155 @@ function daysAgo(n: number, hour = 10) {
 
 function monthDate(offset: number, day: number) {
   return new Date(YEAR, new Date().getMonth() - offset, day, 10, 0, 0);
+}
+
+/**
+ * Organisation bootstrap. Safe to run on every seed (idempotent):
+ *  1. create the department + designation catalogue
+ *  2. give the owner user a real Staff row so the tree has a Super Admin root
+ *  3. canonicalise legacy designation strings onto Designation rows
+ *  4. attach every top-level employee under the owner
+ */
+async function finalizeOrg(ownerUserId: string) {
+  console.log("→ Organisation catalogue");
+
+  const departmentIds = new Map<string, string>();
+  for (const name of DEPARTMENTS) {
+    const department = await prisma.department.upsert({
+      where: { name },
+      create: { name },
+      update: {},
+    });
+    departmentIds.set(name, department.id);
+  }
+
+  const designationByName = new Map<
+    string,
+    { id: string; level: number; department: string }
+  >();
+  for (const [index, d] of DEFAULT_DESIGNATIONS.entries()) {
+    const departmentId = departmentIds.get(d.department) ?? null;
+    const row = await prisma.designation.upsert({
+      where: { name: d.name },
+      create: {
+        name: d.name,
+        level: d.level,
+        description: d.description ?? null,
+        departmentId,
+        isSystem: true,
+        sortOrder: index,
+      },
+      update: {
+        level: d.level,
+        description: d.description ?? null,
+        departmentId,
+        isSystem: true,
+        sortOrder: index,
+      },
+    });
+    designationByName.set(row.name, {
+      id: row.id,
+      level: row.level,
+      department: d.department,
+    });
+  }
+
+  const ownerUser = await prisma.user.findUniqueOrThrow({
+    where: { id: ownerUserId },
+    include: { staff: true },
+  });
+  const superAdmin = designationByName.get("Super Admin");
+  const managementId = departmentIds.get("Management") ?? null;
+
+  let ownerStaffId = ownerUser.staff?.id ?? null;
+  if (!ownerStaffId) {
+    const existing = await prisma.staff.findUnique({
+      where: { employeeId: "UE-EMP-000" },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.staff.update({
+        where: { id: existing.id },
+        data: { userId: ownerUserId },
+      });
+      ownerStaffId = existing.id;
+    } else {
+      const created = await prisma.staff.create({
+        data: {
+          employeeId: "UE-EMP-000",
+          userId: ownerUserId,
+          fullName: ownerUser.name,
+          mobile: "0000000000",
+          email: ownerUser.email,
+          joiningDate: new Date(YEAR - 2, 0, 1),
+          designation: "Super Admin",
+          designationId: superAdmin?.id ?? null,
+          department: "Management",
+          departmentId: managementId,
+          status: "ACTIVE",
+          notes: "Company owner — root of the organisation tree.",
+        },
+      });
+      ownerStaffId = created.id;
+    }
+  }
+  if (ownerStaffId) {
+    await prisma.staff.update({
+      where: { id: ownerStaffId },
+      data: {
+        reportsToId: null,
+        designation: "Super Admin",
+        designationId: superAdmin?.id ?? null,
+        department: "Management",
+        departmentId: managementId,
+        status: "ACTIVE",
+      },
+    });
+  }
+
+  const existingStaff = await prisma.staff.findMany({
+    select: { id: true, designation: true, department: true, designationId: true, departmentId: true },
+  });
+  for (const member of existingStaff) {
+    const canonical = canonicalDesignation(member.designation);
+    const designation = designationByName.get(canonical);
+    const departmentName =
+      member.department || designation?.department || "Management";
+    const departmentId = departmentIds.get(departmentName) ?? null;
+    if (
+      member.designation !== canonical ||
+      member.designationId !== (designation?.id ?? null) ||
+      member.department !== departmentName ||
+      member.departmentId !== departmentId
+    ) {
+      await prisma.staff.update({
+        where: { id: member.id },
+        data: {
+          designation: canonical,
+          designationId: designation?.id ?? null,
+          department: departmentName,
+          departmentId,
+        },
+      });
+    }
+  }
+
+  // Every employee without a reporting manager hangs directly under the owner.
+  if (ownerStaffId) {
+    await prisma.staff.updateMany({
+      where: { reportsToId: null, id: { not: ownerStaffId } },
+      data: { reportsToId: ownerStaffId },
+    });
+  }
+
+  const [departments, designations, staffCount] = await Promise.all([
+    prisma.department.count(),
+    prisma.designation.count(),
+    prisma.staff.count(),
+  ]);
+  console.log(
+    `   ${departments} departments · ${designations} designations · ${staffCount} employees`,
+  );
 }
 
 async function main() {
@@ -177,13 +327,15 @@ async function main() {
   }
 
   if (!DEMO) {
-    console.log("SEED_DEMO=false — skipping demo dataset.");
+    await finalizeOrg(owner.id);
+    console.log("SEED_DEMO=false - skipping demo dataset.");
     return;
   }
 
   const existingStaff = await prisma.staff.count();
   if (existingStaff > 0) {
-    console.log("Demo staff already present — skipping demo dataset.");
+    await finalizeOrg(owner.id);
+    console.log("Demo staff already present - skipping demo dataset.");
     return;
   }
 
@@ -669,6 +821,8 @@ async function main() {
       },
     ],
   });
+
+  await finalizeOrg(owner.id);
 
   console.log("\n✔ Seed complete");
   console.log("   Owner   : admin@ushaenterprises.in / " + ownerPassword);

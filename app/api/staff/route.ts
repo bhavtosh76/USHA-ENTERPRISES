@@ -3,6 +3,9 @@ import { requireApi, parseBody, withApi, json, auditRequest, HttpError } from "@
 import { staffSchema } from "@/lib/validation";
 import { nextEmployeeId } from "@/lib/ids";
 import { hashPassword } from "@/lib/auth";
+import { canonicalDesignation, getOrgAccess } from "@/lib/org";
+
+const MANAGER_ALLOWED_ROLES = ["FIELD_STAFF", "TEAM_LEADER"];
 
 export const POST = withApi(async (request) => {
   const user = await requireApi("staff.manage");
@@ -14,6 +17,16 @@ export const POST = withApi(async (request) => {
     throw new HttpError(403, "Only the Super Admin can create another Super Admin.");
   }
 
+  const access = await getOrgAccess(user);
+  if (!access.all) {
+    if (!MANAGER_ALLOWED_ROLES.includes(input.roleKey)) {
+      throw new HttpError(403, "You can only create Team Leader or Field Staff accounts.");
+    }
+    if (!input.reportsToId || !access.ids?.has(input.reportsToId)) {
+      throw new HttpError(403, "Select a reporting manager from your own team.");
+    }
+  }
+
   const role = await prisma.role.findUnique({ where: { key: input.roleKey } });
   if (!role) throw new HttpError(422, "Invalid role selected.");
 
@@ -21,9 +34,31 @@ export const POST = withApi(async (request) => {
   if (exists) throw new HttpError(409, "This email is already registered. Use a different email.");
 
   if (input.reportsToId) {
-    const manager = await prisma.staff.findUnique({ where: { id: input.reportsToId } });
+    const manager = await prisma.staff.findUnique({
+      where: { id: input.reportsToId },
+      select: { id: true, status: true },
+    });
     if (!manager) throw new HttpError(422, "Reporting manager not found.");
+    if (manager.status !== "ACTIVE") throw new HttpError(422, "Reporting manager is not active.");
   }
+
+  const canonical = canonicalDesignation(input.designation);
+  const designation = await prisma.designation.findUnique({ where: { name: canonical } });
+  if (designation && !access.all) {
+    const actorStaff = user.staffId
+      ? await prisma.staff.findUnique({
+          where: { id: user.staffId },
+          select: { designationRef: { select: { level: true } } },
+        })
+      : null;
+    const actorLevel = actorStaff?.designationRef?.level ?? 0;
+    if (designation.level >= actorLevel) {
+      throw new HttpError(403, "Aap apne se senior designation wala employee create nahi kar sakte.");
+    }
+  }
+  const department = input.department
+    ? await prisma.department.findUnique({ where: { name: input.department } })
+    : null;
 
   const employeeId = await nextEmployeeId();
 
@@ -43,8 +78,10 @@ export const POST = withApi(async (request) => {
           email: input.email,
           address: input.address,
           joiningDate: new Date(input.joiningDate),
-          designation: input.designation,
+          designation: canonical,
+          designationId: designation?.id ?? null,
           department: input.department,
+          departmentId: department?.id ?? null,
           monthlySalary: input.monthlySalary,
           bankName: input.bankName,
           bankAccount: input.bankAccount,
@@ -62,11 +99,26 @@ export const POST = withApi(async (request) => {
     include: { staff: true },
   });
 
+  if (created.staff && input.reportsToId) {
+    await prisma.employeeTransfer.create({
+      data: {
+        staffId: created.staff.id,
+        fromManagerId: null,
+        toManagerId: input.reportsToId,
+        fromDesignation: null,
+        toDesignation: canonical,
+        reason: "Initial reporting manager assigned on employee creation.",
+        transferredById: user.id,
+      },
+    });
+  }
+
   await auditRequest(user, request, "CREATE", "Staff", created.staff?.id, {
     employeeId,
     name: input.fullName,
     role: input.roleKey,
     email: input.email,
+    reportsToId: input.reportsToId,
   });
 
   await prisma.notification.create({

@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   Banknote,
   CalendarCheck,
   Edit3,
+  History,
   Mail,
   MapPin,
   Phone,
@@ -15,6 +17,7 @@ import {
 import { requirePermission, can } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { staffScope } from "@/lib/access";
+import { collectDescendantIds } from "@/lib/org";
 import { Avatar, Badge, Card, CardHeader, InfoRow, LinkButton, StatCard } from "@/components/ui";
 import { PhotoUploader } from "@/components/staff/photo-uploader";
 import { StaffDangerZone } from "@/components/staff/staff-danger";
@@ -34,8 +37,10 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const isSelf = user.staffId === id;
+  const canSeeSalary = can(user, "payroll.view") || isSelf;
 
-  const [staff, customerCount, pipelineAgg, salariesAgg] = await Promise.all([
+  const [staff, customerCount, pipelineAgg, salariesAgg, hierarchy] = await Promise.all([
     prisma.staff.findUnique({
       where: { id },
       include: {
@@ -50,21 +55,33 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
           select: { id: true, fullName: true, customerCode: true, status: true, village: true, capacityKw: true, systemCost: true },
         },
         leaves: { orderBy: { createdAt: "desc" }, take: 8 },
+        transfers: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          include: { transferredBy: { select: { name: true } } },
+        },
+        statusHistory: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          include: { changedBy: { select: { name: true } } },
+        },
       },
     }),
     prisma.customer.count({ where: { assignedStaffId: id, isArchived: false } }),
     prisma.customer.aggregate({ where: { assignedStaffId: id, isArchived: false }, _sum: { systemCost: true } }),
     prisma.salary.aggregate({ where: { staffId: id, status: "PAID" }, _sum: { netSalary: true } }),
+    prisma.staff.findMany({ select: { id: true, fullName: true, reportsToId: true } }),
   ]);
 
   if (!staff) notFound();
 
+  const teamSize = Math.max(0, collectDescendantIds(hierarchy, id).size - 1);
+  const nameById = new Map(hierarchy.map((h) => [h.id, h.fullName]));
   const present = staff.attendance.filter((a) => a.status === "PRESENT" || a.status === "HALF_DAY").length;
   const absent = staff.attendance.filter((a) => a.status === "ABSENT" || a.status === "UNPAID_LEAVE").length;
   const lastSalary = staff.salaries[0];
   const pipeline = pipelineAgg._sum.systemCost ?? 0;
   const achievement = staff.targetMonthly > 0 ? Math.min(100, Math.round((pipeline / staff.targetMonthly) * 100)) : 0;
-  const isSelf = user.staffId === staff.id;
 
   return (
     <div>
@@ -116,7 +133,11 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
         <StatCard label="Present this month" value={present} hint={`${absent} absent / leave`} icon={<UserCheck className="h-5 w-5" />} tone="success" />
         <StatCard label="Assigned customers" value={customerCount} icon={<Users className="h-5 w-5" />} tone="brand" />
         <StatCard label="Pipeline value" value={formatINR(pipeline)} hint={`${achievement}% of monthly target`} icon={<Target className="h-5 w-5" />} tone="info" />
-        <StatCard label="Last net salary" value={lastSalary ? formatINR(lastSalary.netSalary) : "—"} hint={lastSalary ? `${monthLabel(lastSalary.month)} · ${lastSalary.status}` : "No payroll yet"} icon={<Banknote className="h-5 w-5" />} tone="purple" />
+        {canSeeSalary ? (
+          <StatCard label="Last net salary" value={lastSalary ? formatINR(lastSalary.netSalary) : "—"} hint={lastSalary ? `${monthLabel(lastSalary.month)} · ${lastSalary.status}` : "No payroll yet"} icon={<Banknote className="h-5 w-5" />} tone="purple" />
+        ) : (
+          <StatCard label="Total team" value={teamSize} hint={`${staff.subordinates.length} direct reports`} icon={<Users className="h-5 w-5" />} tone="purple" />
+        )}
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -149,6 +170,62 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
             ) : null}
           </Card>
 
+          <Card>
+            <CardHeader
+              title="Team & reporting history"
+              subtitle={`${staff.subordinates.length} direct reports · ${teamSize} total team strength`}
+              action={<Link href="/app/org" className="text-[11px] font-semibold text-solar-700 hover:underline">Open org tree</Link>}
+            />
+            <div className="grid gap-0 px-5 py-3 sm:grid-cols-2">
+              <div className="pr-0 sm:pr-6">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Direct reports</p>
+                <ul className="mt-2 space-y-1.5">
+                  {staff.subordinates.map((s) => (
+                    <li key={s.id} className="flex items-center justify-between gap-2 text-xs">
+                      <Link href={`/app/staff/${s.id}`} className="font-medium text-navy-900 hover:text-solar-700">{s.fullName}</Link>
+                      <span className="text-[10px] text-slate-400">{s.designation} · {s.status}</span>
+                    </li>
+                  ))}
+                  {!staff.subordinates.length ? <li className="text-xs text-slate-400">No direct reports.</li> : null}
+                </ul>
+              </div>
+              <div className="mt-4 border-t border-slate-100 pt-3 sm:mt-0 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"><UserCheck className="h-3 w-3" /> Reports to</p>
+                <p className="mt-2 text-xs font-semibold text-navy-900">
+                  {staff.reportsTo ? <Link href={`/app/staff/${staff.reportsTo.id}`} className="hover:text-solar-700">{staff.reportsTo.fullName}</Link> : "Top level (no manager)"}
+                </p>
+                <p className="mt-1 text-[10px] text-slate-400">{staff.reportsTo?.designation || "—"}</p>
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Total team strength</p>
+                <p className="mt-1 text-lg font-bold text-navy-900">{teamSize}</p>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 px-5 py-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"><History className="h-3 w-3" /> Transfer & reporting history</p>
+              <ul className="mt-2 divide-y divide-slate-50">
+                {staff.transfers.map((t) => (
+                  <li key={t.id} className="py-2 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-1.5 text-slate-700">
+                      <ArrowLeftRight className="h-3 w-3 text-slate-400" />
+                      <span className="font-medium">{t.fromManagerId ? nameById.get(t.fromManagerId) || "—" : "No manager"}</span>
+                      <span className="text-slate-400">→</span>
+                      <span className="font-medium">{t.toManagerId ? nameById.get(t.toManagerId) || "—" : "No manager"}</span>
+                      {t.fromDesignation !== t.toDesignation ? (
+                        <span className="text-slate-400">· {t.fromDesignation || "—"} → {t.toDesignation}</span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-slate-400">
+                      {formatDate(t.effectiveDate)} · by {t.transferredBy?.name || "system"}
+                      {t.reason ? ` · ${t.reason}` : ""}
+                    </p>
+                  </li>
+                ))}
+                {!staff.transfers.length ? <li className="py-2 text-[11px] text-slate-400">No transfers recorded yet.</li> : null}
+              </ul>
+            </div>
+          </Card>
+
+          {canSeeSalary ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <Card>
               <CardHeader title="Salary structure" />
@@ -172,6 +249,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
               </p>
             </Card>
           </div>
+          ) : null}
 
           <Card>
             <CardHeader
@@ -198,6 +276,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
             </div>
           </Card>
 
+          {canSeeSalary ? (
           <Card>
             <CardHeader title="Salary history" subtitle="Last 12 payroll records" />
             <div className="overflow-x-auto">
@@ -221,6 +300,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
               </table>
             </div>
           </Card>
+          ) : null}
         </div>
 
         <div className="space-y-4">

@@ -9,6 +9,7 @@ export const PERMISSIONS = {
   "dashboard.view": "View dashboard",
   "staff.view": "View staff directory & profiles",
   "staff.manage": "Create / edit / disable staff",
+  "staff.transfer": "Transfer staff or change reporting manager",
   "attendance.view": "View attendance",
   "attendance.manage": "Mark / edit attendance & approve leaves",
   "payroll.view": "View payroll & salary slips",
@@ -44,6 +45,7 @@ const FIELD_STAFF_PERMS: Permission[] = [
   "installation.view",
   "subsidy.view",
   "notification.view",
+  "staff.view",
 ];
 
 const TEAM_LEADER_PERMS: Permission[] = [
@@ -63,6 +65,8 @@ const AREA_MANAGER_PERMS: Permission[] = [
 
 const MANAGER_PERMS: Permission[] = [
   ...AREA_MANAGER_PERMS,
+  "staff.manage",
+  "staff.transfer",
   "customer.delete",
   "finance.view",
   "subsidy.manage",

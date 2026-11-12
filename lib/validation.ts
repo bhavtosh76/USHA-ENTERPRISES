@@ -287,3 +287,17 @@ export const documentCheckSchema = z.object({
   dob: z.string().trim().optional(),
   address: z.string().trim().optional(),
 });
+
+export const staffTransferSchema = z.object({
+  toManagerId: z.string().trim().nullable().optional(),
+  designation: z.string().trim().optional(),
+  reason: z.string().trim().max(500).optional(),
+  effectiveDate: z.string().trim().optional(),
+});
+
+export const designationSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  level: z.coerce.number().int().min(0).max(100).default(50),
+  description: z.string().trim().max(240).optional(),
+  department: z.string().trim().max(80).optional(),
+});

@@ -57,6 +57,8 @@ model User {
   subsidyCalcs       SubsidyCalculation[]
   resetRequests      PasswordResetRequest[]
   handledResets      PasswordResetRequest[] @relation("ResetRequestHandler")
+  transfersMade      EmployeeTransfer[]      @relation("TransferBy")
+  statusChangesMade  EmployeeStatusHistory[] @relation("StatusChangeBy")
 
   @@index([roleId])
 }
@@ -78,7 +80,11 @@ model Staff {
   photoPath       String?
   joiningDate     DateTime
   designation     String // R Manager, AREA Manager, Team Leader, Field Executive, ...
+  designationId   String?
+  designationRef  Designation? @relation(fields: [designationId], references: [id])
   department      String?
+  departmentId    String?
+  departmentRef   Department?  @relation(fields: [departmentId], references: [id])
   monthlySalary   Float     @default(0)
   bankName        String?
   bankAccount     String?
@@ -101,9 +107,14 @@ model Staff {
   customers       Customer[]
   installations   Installation[]
   transactions    Transaction[]
+  transfers       EmployeeTransfer[]
+  statusHistory   EmployeeStatusHistory[]
 
   @@index([status])
   @@index([designation])
+  @@index([reportsToId])
+  @@index([designationId])
+  @@index([departmentId])
 }
 
 model Attendance {
@@ -481,4 +492,68 @@ model StoredFile {
   mimeType  String
   size      Int
   createdAt DateTime @default(now())
+}
+
+// ------------------------------------------------------------------
+// ORGANISATION STRUCTURE
+// ------------------------------------------------------------------
+
+model Department {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  description  String?
+  isActive     Boolean       @default(true)
+  staff        Staff[]
+  designations Designation[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Designation {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  level        Int         @default(50) // higher = more senior, drives tree height
+  description  String?
+  isSystem     Boolean     @default(false)
+  isActive     Boolean     @default(true)
+  sortOrder    Int         @default(0)
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  staff        Staff[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([level])
+}
+
+// Immutable history of reporting-manager / designation changes.
+model EmployeeTransfer {
+  id              String   @id @default(cuid())
+  staffId         String
+  staff           Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  fromManagerId   String?
+  toManagerId     String?
+  fromDesignation String?
+  toDesignation   String?
+  reason          String?
+  effectiveDate   DateTime @default(now())
+  transferredById String?
+  transferredBy   User?    @relation("TransferBy", fields: [transferredById], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@index([staffId, createdAt])
+}
+
+model EmployeeStatusHistory {
+  id           String   @id @default(cuid())
+  staffId      String
+  staff        Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  fromStatus   String?
+  toStatus     String
+  reason       String?
+  changedById  String?
+  changedBy    User?    @relation("StatusChangeBy", fields: [changedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([staffId, createdAt])
 }

@@ -102,7 +102,107 @@ body {
     box-shadow: none;
     border-color: #ddd;
   }
+
+  /* Print only the organisational chart, not the app shell. */
+  body * {
+    visibility: hidden;
+  }
+  .org-print-root,
+  .org-print-root * {
+    visibility: visible;
+  }
+  .org-print-root {
+    position: absolute !important;
+    inset: 0 auto auto 0;
+    width: 100% !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    background: white !important;
+  }
+  .org-print-root .org-canvas-inner {
+    transform: none !important;
+  }
+  .org-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
 }
+
+/* ---------------------------------------------------- organisation tree */
+.org-canvas {
+  scrollbar-width: thin;
+}
+.org-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.org-downline {
+  width: 2px;
+  height: 22px;
+  background: #cbd5e1;
+  flex: none;
+}
+.org-children {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.org-child {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 22px 10px 0;
+}
+.org-child::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 22px;
+  background: #cbd5e1;
+}
+.org-child::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #cbd5e1;
+}
+.org-child:first-child::after {
+  left: 50%;
+}
+.org-child:last-child::after {
+  right: 50%;
+}
+.org-child:only-child::after {
+  display: none;
+}
+.org-card {
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .org-children {
+    flex-direction: column;
+    align-items: center;
+  }
+  .org-child {
+    padding: 16px 0 0;
+  }
+  .org-child::before {
+    height: 16px;
+  }
+  .org-child::after {
+    display: none;
+  }
+}
+
 
 @keyframes pulse-ring {
   0% { transform: scale(0.9); opacity: 0.8; }

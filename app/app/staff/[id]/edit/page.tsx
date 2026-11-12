@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
 import { StaffForm } from "@/components/staff/staff-form";
 import { toInputDate } from "@/lib/utils";
+import { collectDescendantIds, getOrgAccess } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Edit Staff" };
@@ -13,18 +14,36 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
   await requirePermission("staff.manage");
   const { id } = await params;
 
-  const [staff, roles, managers] = await Promise.all([
+  const access = await getOrgAccess(user);
+  if (!access.all && !access.ids?.has(id)) notFound();
+
+  const [staff, roles, designations, departments, allStaff, hierarchy] = await Promise.all([
     prisma.staff.findUnique({ where: { id }, include: { user: { include: { role: true } } } }),
     prisma.role.findMany({
-      where: user.roleKey === "SUPER_ADMIN" ? {} : { key: { not: "SUPER_ADMIN" } },
+      where: {
+        ...(user.roleKey === "SUPER_ADMIN" ? {} : { key: { not: "SUPER_ADMIN" } }),
+        ...(access.all ? {} : { key: { in: ["FIELD_STAFF", "TEAM_LEADER"] } }),
+      },
       orderBy: { name: "asc" },
       select: { key: true, name: true },
     }),
-    prisma.staff.findMany({
-      where: { status: "ACTIVE", id: { not: id } },
-      orderBy: { fullName: "asc" },
-      select: { id: true, fullName: true, designation: true },
+    prisma.designation.findMany({
+      where: { isActive: true },
+      orderBy: [{ level: "desc" }, { name: "asc" }],
+      select: { name: true, level: true },
     }),
+    prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { name: true } }),
+    prisma.staff.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true,
+        fullName: true,
+        designation: true,
+        designationRef: { select: { level: true } },
+      },
+    }),
+    prisma.staff.findMany({ select: { id: true, reportsToId: true } }),
   ]);
 
   if (!staff) notFound();
@@ -32,11 +51,23 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
     notFound();
   }
 
+  // Never offer the employee's own subtree as a reporting manager (cycle).
+  const blocked = collectDescendantIds(hierarchy, id);
+  const managers = allStaff
+    .filter((s) => !blocked.has(s.id))
+    .filter((s) => access.all || access.ids?.has(s.id))
+    .map((s) => ({
+      id: s.id,
+      fullName: s.fullName,
+      designation: s.designation,
+      level: s.designationRef?.level,
+    }));
+
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title={`Edit — ${staff.fullName}`}
-        subtitle={`${staff.employeeId} · Password blank chhodne par current password unchanged rahega.`}
+        subtitle={`${staff.employeeId} · Password blank chhodne par current password unchanged rahega. Reporting change transfer history me record hoti hai.`}
         eyebrow="Human Resources"
       />
       <StaffForm
@@ -44,6 +75,8 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
         staffId={staff.id}
         roles={roles}
         managers={managers}
+        designations={designations}
+        departments={departments.map((d) => d.name)}
         initial={{
           fullName: staff.fullName,
           mobile: staff.mobile,

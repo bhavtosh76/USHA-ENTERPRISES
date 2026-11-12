@@ -7,6 +7,8 @@ import { Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { DEPARTMENTS, DESIGNATIONS } from "@/lib/constants";
 
+type DesignationOption = { name: string; level: number };
+
 export type StaffFormValues = {
   fullName: string;
   mobile: string;
@@ -58,12 +60,16 @@ const empty: StaffFormValues = {
 export function StaffForm({
   roles,
   managers,
+  designations,
+  departments,
   mode = "create",
   staffId,
   initial,
 }: {
   roles: { key: string; name: string }[];
-  managers: { id: string; fullName: string; designation: string }[];
+  managers: { id: string; fullName: string; designation: string; level?: number }[];
+  designations?: DesignationOption[];
+  departments?: string[];
   mode?: "create" | "edit";
   staffId?: string;
   initial?: Partial<StaffFormValues>;
@@ -73,6 +79,13 @@ export function StaffForm({
   const [values, setValues] = useState<StaffFormValues>({ ...empty, ...initial });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const designationList = designations?.length ? designations : DESIGNATIONS.map((name, i) => ({ name, level: 50 - i }));
+  const departmentList = departments?.length ? departments : [...DEPARTMENTS];
+  const selectedLevel = designationList.find((d) => d.name === values.designation)?.level ?? 50;
+  const eligibleManagers = managers.filter(
+    (m) => m.id !== staffId && (m.level === undefined || m.level > selectedLevel),
+  );
 
   function set<K extends keyof StaffFormValues>(key: K, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -133,24 +146,24 @@ export function StaffForm({
           <Field label="Joining date" required>
             <Input type="date" value={values.joiningDate} onChange={(e) => set("joiningDate", e.target.value)} />
           </Field>
-          <Field label="Designation" required>
+          <Field label="Designation" required hint={selectedLevel ? `Level ${selectedLevel}` : undefined}>
             <Select value={values.designation} onChange={(e) => set("designation", e.target.value)}>
-              {DESIGNATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+              {designationList.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
             </Select>
           </Field>
           <Field label="Department">
             <Select value={values.department} onChange={(e) => set("department", e.target.value)}>
               <option value="">—</option>
-              {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              {departmentList.map((d) => <option key={d} value={d}>{d}</option>)}
             </Select>
           </Field>
           <Field label="Work area">
             <Input value={values.area} onChange={(e) => set("area", e.target.value)} placeholder="e.g. Puranpur" />
           </Field>
-          <Field label="Reports to">
+          <Field label="Reports to" hint="Only senior designations are listed">
             <Select value={values.reportsToId} onChange={(e) => set("reportsToId", e.target.value)}>
               <option value="">—</option>
-              {managers.filter((m) => m.id !== staffId).map((m) => (
+              {eligibleManagers.map((m) => (
                 <option key={m.id} value={m.id}>{m.fullName} — {m.designation}</option>
               ))}
             </Select>
