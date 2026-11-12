@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { requirePermission, can } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { customerScope } from "@/lib/access";
+import { customerScope, staffScope } from "@/lib/access";
 import {
   Badge,
   Card,
@@ -87,7 +87,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
       },
     }),
     can(user, "staff.view")
-      ? prisma.staff.findMany({ where: { status: "ACTIVE" }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } })
+      ? prisma.staff.findMany({ where: { AND: [await staffScope(user), { status: "ACTIVE" }] }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } })
       : Promise.resolve([]),
     prisma.customer.groupBy({ by: ["status"], where: { AND: [scope, { isArchived: false }] }, _count: { _all: true } }),
   ]);

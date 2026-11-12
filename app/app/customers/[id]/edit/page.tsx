@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePermission, can } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canAccessCustomer } from "@/lib/access";
+import { canAccessCustomer, staffScope } from "@/lib/access";
 import { PageHeader } from "@/components/ui";
 import { CustomerForm } from "@/components/customers/customer-form";
 import { toInputDate } from "@/lib/utils";
@@ -18,7 +18,7 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
     prisma.customer.findUnique({ where: { id } }),
     can(user, "staff.view")
       ? prisma.staff.findMany({
-          where: { status: "ACTIVE" },
+          where: { AND: [await staffScope(user), { status: "ACTIVE" }] },
           select: { id: true, fullName: true, designation: true },
           orderBy: { fullName: "asc" },
         })

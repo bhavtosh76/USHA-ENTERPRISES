@@ -1,5 +1,6 @@
 import { requirePermission, can } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { staffScope } from "@/lib/access";
 import { PageHeader } from "@/components/ui";
 import { CustomerForm } from "@/components/customers/customer-form";
 
@@ -12,7 +13,7 @@ export default async function NewCustomerPage() {
   const [staff, setting] = await Promise.all([
     can(user, "staff.view")
       ? prisma.staff.findMany({
-          where: { status: "ACTIVE" },
+          where: { AND: [await staffScope(user), { status: "ACTIVE" }] },
           select: { id: true, fullName: true, designation: true },
           orderBy: { fullName: "asc" },
         })

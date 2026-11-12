@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { BadgeCheck, Clock3, Filter, Search, Wrench } from "lucide-react";
 import { can, requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { customerScope } from "@/lib/access";
+import { customerScope, staffScope } from "@/lib/access";
 import {
   Badge,
   Card,
@@ -94,7 +94,7 @@ export default async function InstallationsPage({
           select: { id: true, fullName: true, customerCode: true, capacityKw: true },
         })
       : Promise.resolve([]),
-    prisma.staff.findMany({ where: { status: "ACTIVE" }, orderBy: { fullName: "asc" }, select: { id: true, fullName: true } }),
+    prisma.staff.findMany({ where: { AND: [await staffScope(user), { status: "ACTIVE" }] }, orderBy: { fullName: "asc" }, select: { id: true, fullName: true } }),
     preselect
       ? prisma.customer.findUnique({
           where: { id: preselect },

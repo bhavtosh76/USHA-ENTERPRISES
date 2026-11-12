@@ -85,6 +85,8 @@ export function StaffForm({
   const [values, setValues] = useState<StaffFormValues>({ ...empty, ...initial });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const designationList = designations?.length ? designations : DESIGNATIONS.map((name, i) => ({ name, level: 50 - i }));
   const departmentList = departments?.length ? departments : [...DEPARTMENTS];
@@ -127,7 +129,21 @@ export function StaffForm({
         throw new Error(detail || data.error || "Could not save staff.");
       }
       toast.push("success", mode === "create" ? "Staff created" : "Staff updated", "Login account and profile saved.");
-      router.push(`/app/staff/${data.staff?.id || staffId}`);
+      const savedId = data.staff?.id || staffId;
+      if (mode === "create" && photo && savedId) {
+        try {
+          const form = new FormData();
+          form.append("photo", photo);
+          const uploadRes = await fetch(`/api/staff/${savedId}/photo`, { method: "POST", body: form });
+          if (!uploadRes.ok) {
+            const uploadData = await uploadRes.json().catch(() => ({}));
+            toast.push("warning", "Photo not uploaded", uploadData.error || "Employee profile se photo upload karein.");
+          }
+        } catch {
+          toast.push("warning", "Photo not uploaded", "Employee profile se photo upload karein.");
+        }
+      }
+      router.push(`/app/staff/${savedId}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save staff.");
@@ -139,6 +155,32 @@ export function StaffForm({
     <form onSubmit={submit} className="space-y-4">
       <Card className="p-5">
         <h2 className="mb-4 text-sm font-bold text-navy-900">Employee profile</h2>
+        {mode === "create" ? (
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
+            {photoPreview ? (
+              <img src={photoPreview} alt="Preview" className="h-14 w-14 rounded-full object-cover ring-2 ring-white" />
+            ) : (
+              <div className="grid h-14 w-14 place-items-center rounded-full bg-slate-200 text-xs font-bold text-slate-500">Photo</div>
+            )}
+            <div>
+              <label className="cursor-pointer text-xs font-semibold text-solar-700 hover:underline">
+                {photoPreview ? "Change photo" : "Add employee photo"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setPhoto(file);
+                    if (photoPreview) URL.revokeObjectURL(photoPreview);
+                    setPhotoPreview(file ? URL.createObjectURL(file) : null);
+                  }}
+                />
+              </label>
+              <p className="text-[11px] text-slate-500">JPG/PNG. Employee create hone ke baad photo save hogi.</p>
+            </div>
+          </div>
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Full name" required>
             <Input value={values.fullName} onChange={(e) => set("fullName", e.target.value)} />

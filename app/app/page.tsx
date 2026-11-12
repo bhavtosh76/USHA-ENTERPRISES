@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { requireUser, can } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { customerScope } from "@/lib/access";
+import { customerScope, staffScope } from "@/lib/access";
 import { Badge, Card, CardHeader, LinkButton, Progress, StatCard } from "@/components/ui";
 import { BarChart, Donut } from "@/components/charts";
 import { formatDate, formatINR, monthLabel } from "@/lib/utils";
@@ -30,6 +30,7 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const scope = await customerScope(user);
   const customerWhere = { AND: [scope, { isArchived: false }] };
+  const teamScope = await staffScope(user);
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -102,9 +103,9 @@ export default async function DashboardPage() {
       where: { date: { gte: sixMonthsAgo } },
       select: { type: true, amount: true, date: true },
     }),
-    prisma.salary.count({ where: { status: { in: ["PENDING", "APPROVED"] } } }),
-    prisma.staff.count({ where: { status: "ACTIVE" } }),
-    prisma.staff.count(),
+    prisma.salary.count({ where: { status: { in: ["PENDING", "APPROVED"] }, staff: teamScope } }),
+    prisma.staff.count({ where: { AND: [teamScope, { status: "ACTIVE" }] } }),
+    prisma.staff.count({ where: teamScope }),
   ]);
 
   const totalIncome = incomeAgg._sum.amount ?? 0;
