@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone, Sun, ShieldCheck } from "lucide-react";
+import { Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { phoneHref, type CompanyInfo } from "@/lib/company-shared";
 
 export function PublicFooter({ company }: { company: CompanyInfo }) {
@@ -8,9 +9,7 @@ export function PublicFooter({ company }: { company: CompanyInfo }) {
       <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-solar-600 text-white">
-              <Sun className="h-5 w-5" />
-            </span>
+            <BrandLogo size={40} />
             <div>
               <p className="text-sm font-extrabold tracking-wide text-white">{company.name}</p>
               <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400">Solar ERP + CRM</p>

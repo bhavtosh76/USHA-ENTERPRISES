@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, Home, SearchX, Sun } from "lucide-react";
+import { ArrowLeft, Home, SearchX } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const metadata = { title: "Page not found" };
 
@@ -8,9 +9,7 @@ export default function NotFound() {
     <div className="grid min-h-screen place-items-center bg-sand px-4 py-16">
       <div className="w-full max-w-lg text-center">
         <Link href="/" className="mb-10 inline-flex items-center gap-2.5">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-solar-500 text-white shadow-lg shadow-solar-900/20">
-            <Sun className="h-5 w-5" />
-          </span>
+          <BrandLogo size={40} priority />
           <span className="text-left leading-tight">
             <span className="block text-sm font-extrabold tracking-wide text-navy-950">USHA ENTERPRISES</span>
             <span className="block text-[10px] uppercase tracking-[0.2em] text-slate-500">Solar ERP + CRM</span>

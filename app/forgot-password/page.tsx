@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Sun, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { ForgotPasswordForm } from "@/components/forgot-password-form";
+import { BrandLogo } from "@/components/brand-logo";
 import { getCompany } from "@/lib/company";
 
 export const metadata = { title: "Forgot Password" };
@@ -19,9 +20,7 @@ export default async function ForgotPasswordPage() {
         </Link>
 
         <div className="mb-6 flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-navy-900 text-white">
-            <Sun className="h-5 w-5" />
-          </span>
+          <BrandLogo size={44} />
           <div>
             <p className="text-sm font-extrabold tracking-wide text-navy-900">{company.name}</p>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Solar ERP + CRM</p>

@@ -38,8 +38,13 @@ export default async function OrgPage() {
   return (
     <div>
       <div className="hidden print:mb-4 print:block">
-        <h1 className="text-xl font-bold">USHA ENTERPRISES — Organisation Chart</h1>
-        <p className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString("en-IN")} · {tree.total} employees</p>
+        <div className="flex items-center gap-3">
+          <img src="/brand/usha-logo-512.jpg" alt="USHA ENTERPRISES" width={56} height={56} className="h-14 w-14 rounded-lg object-cover" />
+          <div>
+            <h1 className="text-xl font-bold">USHA ENTERPRISES — Organisation Chart</h1>
+            <p className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString("en-IN")} · {tree.total} employees</p>
+          </div>
+        </div>
       </div>
 
       <PageHeader

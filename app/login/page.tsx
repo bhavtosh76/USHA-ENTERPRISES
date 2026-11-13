@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Sun, ShieldCheck, LockKeyhole, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, LockKeyhole, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { LoginForm } from "@/components/login-form";
+import { BrandLogo } from "@/components/brand-logo";
 import { getCompany } from "@/lib/company";
 
 export const metadata = { title: "Secure Login" };
@@ -24,9 +25,7 @@ export default async function LoginPage() {
         />
 
         <div className="relative flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-solar-500 shadow-lg shadow-solar-900/40">
-            <Sun className="h-6 w-6" />
-          </span>
+          <BrandLogo size={44} priority />
           <div>
             <p className="text-base font-extrabold tracking-wide">{company.name}</p>
             <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Solar ERP + CRM</p>
@@ -72,9 +71,7 @@ export default async function LoginPage() {
           </Link>
 
           <div className="mb-7 flex items-center gap-3 lg:hidden">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-navy-900 text-white">
-              <Sun className="h-5 w-5" />
-            </span>
+            <BrandLogo size={40} />
             <div>
               <p className="text-sm font-extrabold tracking-wide text-navy-900">{company.name}</p>
               <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Solar ERP + CRM</p>

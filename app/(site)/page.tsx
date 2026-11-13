@@ -1,10 +1,8 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
   Banknote,
   Building2,
-  CheckCircle2,
   ClipboardCheck,
   FileCheck2,
   FileText,
@@ -108,86 +106,28 @@ export default async function HomePage() {
   return (
     <>
       {/* HERO */}
-      <section className="relative overflow-hidden bg-navy-950 text-white">
-        <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
-        <div className="absolute -right-32 -top-32 h-[420px] w-[420px] rounded-full bg-solar-500/25 blur-3xl" />
-        <div className="absolute -bottom-40 left-1/4 h-[380px] w-[380px] rounded-full bg-navy-500/30 blur-3xl" />
+      <section className="relative bg-navy-950 text-white">
+        <img
+          src="/brand/hero-banner.jpg"
+          srcSet="/brand/hero-banner-sm.jpg 900w, /brand/hero-banner.jpg 1600w"
+          sizes="100vw"
+          width={1600}
+          height={562}
+          fetchPriority="high"
+          alt="USHA ENTERPRISES Solar — Ab bijli bill kam nahi, zero karna hai. Govt subsidy ₹1,08,000 tak ka labh uthayein."
+          className="mx-auto block h-[210px] w-full object-cover object-[68%_center] sm:h-auto sm:object-center"
+        />
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-solar-300 ring-1 ring-inset ring-white/10">
-              <BadgeCheck className="h-3.5 w-3.5" /> PM Surya Ghar subsidy assistance · Puranpur, Pilibhit
-            </span>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl">
-              Ghar ki chhat par <span className="text-solar-400">solar</span>,<br />
-              subsidy ka poora saath.
-            </h1>
-            <p className="mt-5 max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
-              USHA ENTERPRISES aapke ghar ke liye residential rooftop solar system lagata hai —
-              site survey se lekar government subsidy, net metering aur installation tak. Har
-              customer ka poora digital record, secure documentation ke saath.
-            </p>
-
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href="#subsidy" className="inline-flex items-center gap-2 rounded-lg bg-solar-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-solar-900/30 transition hover:bg-solar-600">
-                <Zap className="h-4 w-4" /> Free subsidy estimate
-              </Link>
-              <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-                Book a site survey <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-slate-300">
-              {["End-to-end documentation", "Local installation team", "Transparent estimates", "Secure data handling"].map((t) => (
-                <span key={t} className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-solar-400" /> {t}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative mx-auto w-full max-w-md">
-            <div className="absolute -inset-3 rounded-3xl bg-gradient-to-br from-solar-500/30 to-transparent blur-2xl" />
-            <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/95 p-5 text-slate-800 shadow-pop">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Example estimate</p>
-                  <p className="text-lg font-bold text-navy-900">3 kW Residential System</p>
-                </div>
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-100 text-amber-600">
-                  <Sun className="h-6 w-6" />
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-2.5 rounded-xl bg-slate-50 p-4 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Estimated system cost</span>
-                  <span className="font-semibold text-slate-800">₹1,65,000</span>
-                </div>
-                <div className="flex justify-between text-emerald-700">
-                  <span>Central subsidy (up to)</span>
-                  <span className="font-semibold">− ₹78,000</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">State subsidy</span>
-                  <span className="font-medium text-slate-600">As notified</span>
-                </div>
-                <div className="flex justify-between border-t border-slate-200 pt-2.5 text-sm">
-                  <span className="font-semibold text-navy-900">Estimated contribution</span>
-                  <span className="font-bold text-navy-900">₹87,000</span>
-                </div>
-              </div>
-
-              <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
-                Illustrative only. Actual cost material, brand aur site conditions par depend karta hai;
-                subsidy Government approval par. Calculator se apna estimate banayein.
-              </p>
-
-              <Link href="#subsidy" className="mt-4 flex items-center justify-between rounded-lg bg-navy-950 px-4 py-3 text-xs font-semibold text-white transition hover:bg-navy-800">
-                Calculate for my home <ArrowRight className="h-4 w-4 text-solar-400" />
-              </Link>
-            </div>
-          </div>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3 px-6 py-5">
+          <Link href="#subsidy" className="inline-flex items-center gap-2 rounded-lg bg-solar-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-solar-900/30 transition hover:bg-solar-600">
+            <Zap className="h-4 w-4" /> Free subsidy estimate
+          </Link>
+          <a href="#contact" className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+            Book a site survey <ArrowRight className="h-4 w-4" />
+          </a>
+          <Link href="/calculators/emi" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-transparent px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+            EMI calculator
+          </Link>
         </div>
 
         <div className="relative border-t border-white/10">

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, Phone, Sun, X, Mail, MapPin } from "lucide-react";
+import { Menu, Phone, X, Mail, MapPin } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { phoneHref, type CompanyInfo } from "@/lib/company-shared";
 
 const links = [
@@ -38,9 +39,7 @@ export function PublicHeader({ company }: { company: CompanyInfo }) {
 
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-navy-950 text-solar-400 shadow-sm">
-            <Sun className="h-5 w-5" />
-          </span>
+          <BrandLogo size={40} priority />
           <div className="leading-tight">
             <p className="text-sm font-extrabold tracking-wide text-navy-900">{company.name}</p>
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">

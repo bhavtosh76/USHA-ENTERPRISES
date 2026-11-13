@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
+import { BrandLogo } from "@/components/brand-logo";
 
 export type NavItem = {
   label: string;
@@ -185,9 +186,7 @@ export function AppShell({
   const nav = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-solar-500 text-white shadow-lg shadow-solar-900/30">
-          <Sun className="h-5 w-5" />
-        </span>
+        <BrandLogo size={38} priority />
         <div className="leading-tight">
           <p className="text-sm font-extrabold tracking-wide text-white">USHA ENTERPRISES</p>
           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Solar ERP + CRM</p>
