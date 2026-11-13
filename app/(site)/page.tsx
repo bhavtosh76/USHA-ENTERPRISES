@@ -107,16 +107,23 @@ export default async function HomePage() {
     <>
       {/* HERO */}
       <section className="relative bg-navy-950 text-white">
-        <img
-          src="/brand/hero-banner.jpg"
-          srcSet="/brand/hero-banner-sm.jpg 900w, /brand/hero-banner.jpg 1600w"
-          sizes="100vw"
-          width={1600}
-          height={562}
-          fetchPriority="high"
-          alt="USHA ENTERPRISES Solar — Ab bijli bill kam nahi, zero karna hai. Govt subsidy ₹1,08,000 tak ka labh uthayein."
-          className="mx-auto block h-[210px] w-full object-cover object-[68%_center] sm:h-auto sm:object-center"
-        />
+        <picture>
+          <source
+            media="(max-width: 639px)"
+            srcSet="/brand/hero-banner-mobile-sm.jpg 720w, /brand/hero-banner-mobile.jpg 1080w"
+            sizes="100vw"
+          />
+          <img
+            src="/brand/hero-banner.jpg"
+            srcSet="/brand/hero-banner-sm.jpg 900w, /brand/hero-banner.jpg 1600w"
+            sizes="100vw"
+            width={1600}
+            height={562}
+            fetchPriority="high"
+            alt="USHA ENTERPRISES Solar — Ab bijli bill kam nahi, zero karna hai. Govt subsidy ₹1,08,000 tak ka labh uthayein."
+            className="block w-full aspect-[9/16] object-cover sm:aspect-[1600/562]"
+          />
+        </picture>
 
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3 px-6 py-5">
           <Link href="#subsidy" className="inline-flex items-center gap-2 rounded-lg bg-solar-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-solar-900/30 transition hover:bg-solar-600">
